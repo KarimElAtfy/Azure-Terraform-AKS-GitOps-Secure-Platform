@@ -1,0 +1,61 @@
+# Terraform
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+.terraform/
+*.tfvars
+!*.tfvars.example
+backend.hcl
+!backend.hcl.example
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+env/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Docker
+.docker/
+
+# Helm
+charts/*/charts/
+charts/*/*.tgz
+
+# Flux (bootstrapped content is committed, but local overrides are not)
+# flux-system/ is committed intentionally
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Secrets (never commit)
+*.pem
+*.key
+*.crt
+kubeconfig
+kubeconfig.*
+
+# Azure
+azurite/
