@@ -1,0 +1,82 @@
+replicaCount: 1
+
+image:
+  repository: devsecops-api
+  tag: local
+  pullPolicy: IfNotPresent
+
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+service:
+  type: ClusterIP
+  port: 8000
+  targetPort: 8000
+
+podAnnotations: {}
+
+podLabels: {}
+
+podSecurityContext:
+  fsGroup: 1000
+
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false
+  capabilities:
+    drop:
+      - ALL
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    cpu: 250m
+    memory: 256Mi
+
+podInfo:
+  enabled: true
+
+keyVault:
+  enabled: false
+  secretProviderClassName: devsecops-api-keyvault
+  tenantId: ""
+  keyVaultName: ""
+  clientId: ""
+  secretName: app-demo-secret
+  mountPath: /mnt/secrets-store
+
+appConfig:
+  appName: devsecops-api
+  environment: local
+  configMessage: "Hello from Helm"
+  logLevel: info
+
+version:
+  appVersion: "0.1.0"
+  gitSha: local
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 70
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: devsecops-api.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []

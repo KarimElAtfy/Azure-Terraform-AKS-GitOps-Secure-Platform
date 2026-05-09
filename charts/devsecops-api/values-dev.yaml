@@ -1,0 +1,27 @@
+replicaCount: 1
+
+image:
+  repository: devsecops-api
+  tag: local
+  pullPolicy: IfNotPresent
+
+appConfig:
+  appName: devsecops-api
+  environment: local-helm
+  configMessage: "Running through Helm local values"
+  logLevel: debug
+
+version:
+  appVersion: "0.1.0"
+  gitSha: local-helm-test
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    cpu: 250m
+    memory: 256Mi
+
+keyVault:
+  enabled: false
