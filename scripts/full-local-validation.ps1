@@ -101,4 +101,4 @@ Write-Host "=== FINAL GIT STATUS ===" -ForegroundColor Cyan
 git status --short
 
 Write-Host ""
-Write-Host "Full local validation completed successfully." -ForegroundColor Green
+Write-Host "Full local validation finished successfully." -ForegroundColor Green

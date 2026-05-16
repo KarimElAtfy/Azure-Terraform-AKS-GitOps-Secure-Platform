@@ -16,7 +16,7 @@ terraform plan
 terraform apply
 ```
 
-This layer uses **local state** intentionally — the state backend cannot store its own state.
+This layer uses **local state** intentionally because the backend cannot store its own state yet.
 
 ## Outputs
 

@@ -27,9 +27,7 @@ def get_secret_status() -> dict[str, Any]:
     """
     Check whether the application can access a secret.
 
-    Important:
-    This function NEVER returns the secret value.
-    It only reports whether a secret is available and where it came from.
+    This function returns only status metadata, never the secret value.
     """
 
     env_secret = os.getenv("APP_SECRET")
@@ -164,7 +162,7 @@ def error_test() -> None:
     """
     Intentional error endpoint.
 
-    This is useful later for testing logs, alerts and troubleshooting.
+    Kept on purpose for log and troubleshooting checks.
     """
 
     raise HTTPException(

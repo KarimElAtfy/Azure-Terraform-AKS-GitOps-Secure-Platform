@@ -17,7 +17,7 @@ The important rule: **AKS nodes cost money while they exist, even if the app is 
 
 ## Workflow: Apply → Validate → Document → Destroy
 
-This project is designed for a learn-and-destroy cycle:
+The intended workflow is simple:
 
 1. `terraform apply` the needed layer.
 2. Deploy or reconcile the app.
@@ -51,7 +51,7 @@ terraform destroy -auto-approve
 ## How to Verify Everything Is Gone
 
 ```bash
-# List resource groups — the project RG should be gone
+# List resource groups: the project RG should be gone
 az group list -o table | grep aks-gitops
 
 # Check for orphaned resources tagged by the project

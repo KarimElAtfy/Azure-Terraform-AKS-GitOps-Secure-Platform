@@ -2,14 +2,14 @@
 
 ## Overview
 
-This project provisions a production-inspired (but cost-conscious) platform on Azure where:
+The platform is dev-focused and cost-conscious. It uses:
 
 - **Terraform** manages all Azure infrastructure across three layers.
 - **GitHub Actions** builds container images and pushes them to ACR.
 - **Flux** watches this Git repository and deploys workloads to AKS via Helm.
 - **Key Vault + Workload Identity** provides secure secret access without credentials in the pod.
 
-The key architectural rule: **Terraform owns Azure resources. Flux/Helm own Kubernetes workloads.** They never manage the same objects.
+**Boundary:** Terraform owns Azure resources. Flux and Helm own Kubernetes workloads. They should not manage the same objects.
 
 ## Azure Resources
 
@@ -37,7 +37,7 @@ graph TB
 
 ### Layer 1: Bootstrap (`infra/bootstrap/`)
 
-Creates the Azure Storage Account and container used for Terraform remote state. This is applied first and only once. It uses local state intentionally — the state backend can't store its own state.
+Creates the Azure Storage Account and container used for Terraform remote state. This is applied first and only once. It uses local state intentionally: the state backend can't store its own state.
 
 Resources created:
 - Resource Group for state storage
@@ -134,7 +134,7 @@ flowchart LR
     Pod["App Pod"] -->|"ServiceAccount<br>federated"| WorkloadMI
 ```
 
-- GitHub Actions uses OIDC — no client secrets stored in GitHub.
+- GitHub Actions uses OIDC: no client secrets stored in GitHub.
 - AKS kubelet identity has AcrPull on the container registry.
 - A user-assigned managed identity is federated with a Kubernetes ServiceAccount.
 - The pod uses that ServiceAccount to access Key Vault via Workload Identity.

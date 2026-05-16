@@ -1,6 +1,6 @@
 # GitOps Flow
 
-> To be completed in Phase 6 when Flux is bootstrapped.
+> Living notes for the Flux phase. The desired flow is documented first; real bootstrap output will be added after Flux is installed.
 
 ## What is GitOps?
 
@@ -42,4 +42,4 @@ If GitHub Actions commits an updated image tag back into `clusters/dev/`, protec
 
 ## How to Debug Flux
 
-_To be completed._
+_Planned: add the exact `flux get`, `flux logs` and reconciliation commands after bootstrap._

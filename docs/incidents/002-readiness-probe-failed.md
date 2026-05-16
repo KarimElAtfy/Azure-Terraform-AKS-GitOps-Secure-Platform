@@ -1,6 +1,6 @@
 # Incident 002: Readiness Probe Failed
 
-> To be completed with real debugging experience during Phase 2-6.
+> Draft runbook. Local probe checks are already covered; AKS-specific notes can be added after the cloud deploy.
 
 ## Symptoms
 
@@ -20,15 +20,15 @@ kubectl get endpoints devsecops-api -n devsecops-api
 
 ## Possible Root Causes
 
-1. **Wrong probe path** — Helm values specify `/ready` but the app uses `/readyz`.
-2. **Wrong probe port** — probe targets port 80 but the app listens on 8000.
-3. **App crash loop** — the app starts but fails during initialization.
-4. **Slow startup** — the app takes longer than `initialDelaySeconds` to become ready.
-5. **Missing dependency** — the app's readiness check depends on something unavailable.
+1. **Wrong probe path**: Helm values specify `/ready` but the app uses `/readyz`.
+2. **Wrong probe port**: probe targets port 80 but the app listens on 8000.
+3. **App crash loop**: the app starts but fails during initialization.
+4. **Slow startup**: the app takes longer than `initialDelaySeconds` to become ready.
+5. **Missing dependency**: the app's readiness check depends on something unavailable.
 
 ## Fix
 
-_To be completed with actual resolution steps._
+_Planned: add the exact fix from the first real readiness failure._
 
 ## Prevention
 
