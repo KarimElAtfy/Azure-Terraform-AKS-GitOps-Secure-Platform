@@ -1,0 +1,21 @@
+location            = "germanywestcentral"
+environment         = "dev"
+project_name        = "aks-gitops-secure"
+resource_group_name = "rg-aks-gitops-secure-dev-gwc"
+
+# Optional. Leave empty to let Terraform generate a random suffix.
+name_suffix = ""
+
+vnet_address_space          = ["10.40.0.0/16"]
+aks_subnet_address_prefixes = ["10.40.1.0/24"]
+
+acr_sku                      = "Basic"
+log_analytics_sku            = "PerGB2018"
+log_analytics_retention_days = 30
+
+tags = {
+  project     = "aks-gitops-secure-platform"
+  environment = "dev"
+  managed_by  = "terraform"
+  layer       = "core"
+}
