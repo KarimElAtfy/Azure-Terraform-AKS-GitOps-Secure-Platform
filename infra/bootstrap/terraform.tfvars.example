@@ -1,0 +1,12 @@
+location                  = "germanywestcentral"
+environment               = "dev"
+state_resource_group_name = "rg-aks-gitops-tfstate-dev-gwc"
+state_storage_account_prefix = "staksgitopstf"
+state_container_name      = "tfstate"
+
+tags = {
+  project     = "aks-gitops-secure-platform"
+  environment = "dev"
+  managed_by  = "terraform"
+  layer       = "bootstrap"
+}
