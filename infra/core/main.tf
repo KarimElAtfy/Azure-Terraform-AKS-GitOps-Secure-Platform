@@ -83,3 +83,15 @@ resource "azurerm_user_assigned_identity" "workload" {
 }
 
 data "azurerm_client_config" "current" {}
+
+resource "azurerm_role_assignment" "current_user_key_vault_secrets_officer" {
+  scope                = azurerm_key_vault.main.id
+  role_definition_name = "Key Vault Secrets Officer"
+  principal_id         = data.azurerm_client_config.current.object_id
+}
+
+resource "azurerm_role_assignment" "workload_key_vault_secrets_user" {
+  scope                = azurerm_key_vault.main.id
+  role_definition_name = "Key Vault Secrets User"
+  principal_id         = azurerm_user_assigned_identity.workload.principal_id
+}

@@ -57,3 +57,13 @@ output "workload_identity_id" {
   description = "Resource ID of the user-assigned managed identity used by the application workload."
   value       = azurerm_user_assigned_identity.workload.id
 }
+
+output "acr_id" {
+  description = "ID of the Azure Container Registry."
+  value       = azurerm_container_registry.main.id
+}
+
+output "tenant_id" {
+  description = "Azure tenant ID used by this deployment."
+  value       = data.azurerm_client_config.current.tenant_id
+}
