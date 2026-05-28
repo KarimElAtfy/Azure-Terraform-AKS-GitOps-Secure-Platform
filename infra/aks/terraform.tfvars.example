@@ -1,0 +1,27 @@
+environment              = "dev"
+project_name             = "aks-gitops-secure"
+cluster_name             = "aks-gitops-secure-dev-gwc"
+dns_prefix               = "aks-gitops-secure-dev-gwc"
+node_resource_group_name = "rg-aks-gitops-secure-nodes-dev-gwc"
+
+kubernetes_version = null
+node_count         = 1
+node_vm_size       = "Standard_B2s"
+
+service_cidr   = "10.41.0.0/16"
+dns_service_ip = "10.41.0.10"
+
+app_namespace            = "devsecops-api"
+app_service_account_name = "devsecops-api"
+
+core_state_resource_group_name  = "<tfstate-resource-group>"
+core_state_storage_account_name = "<tfstate-storage-account>"
+core_state_container_name       = "tfstate"
+core_state_key                  = "core.dev.tfstate"
+
+tags = {
+  project     = "aks-gitops-secure-platform"
+  environment = "dev"
+  managed_by  = "terraform"
+  layer       = "aks"
+}
