@@ -95,3 +95,35 @@ resource "azurerm_role_assignment" "workload_key_vault_secrets_user" {
   role_definition_name = "Key Vault Secrets User"
   principal_id         = azurerm_user_assigned_identity.workload.principal_id
 }
+
+resource "azurerm_user_assigned_identity" "github_actions" {
+  name                = "mi-${var.project_name}-github-actions-${var.environment}-gwc"
+  location            = azurerm_resource_group.core.location
+  resource_group_name = azurerm_resource_group.core.name
+
+  tags = local.common_tags
+}
+
+resource "azurerm_federated_identity_credential" "github_actions_main" {
+  name                      = "fic-github-actions-main-${var.environment}"
+  user_assigned_identity_id = azurerm_user_assigned_identity.github_actions.id
+  audience                  = ["api://AzureADTokenExchange"]
+  issuer                    = "https://token.actions.githubusercontent.com"
+  subject                   = "repo:${var.github_repository}:ref:refs/heads/${var.github_branch}"
+}
+
+resource "azurerm_role_assignment" "github_actions_acr_push" {
+  scope                            = azurerm_container_registry.main.id
+  role_definition_name             = "AcrPush"
+  principal_id                     = azurerm_user_assigned_identity.github_actions.principal_id
+  principal_type                   = "ServicePrincipal"
+  skip_service_principal_aad_check = true
+}
+
+resource "azurerm_role_assignment" "github_actions_resource_group_reader" {
+  scope                            = azurerm_resource_group.core.id
+  role_definition_name             = "Reader"
+  principal_id                     = azurerm_user_assigned_identity.github_actions.principal_id
+  principal_type                   = "ServicePrincipal"
+  skip_service_principal_aad_check = true
+}

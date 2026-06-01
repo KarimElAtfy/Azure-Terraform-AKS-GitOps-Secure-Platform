@@ -78,3 +78,15 @@ variable "tags" {
     layer       = "core"
   }
 }
+
+variable "github_repository" {
+  description = "GitHub repository allowed to authenticate to Azure using OIDC, in OWNER/REPO format."
+  type        = string
+  default     = "KarimElAtfy/Azure-Terraform-AKS-GitOps-Secure-Platform"
+}
+
+variable "github_branch" {
+  description = "GitHub branch allowed to authenticate to Azure using OIDC."
+  type        = string
+  default     = "main"
+}

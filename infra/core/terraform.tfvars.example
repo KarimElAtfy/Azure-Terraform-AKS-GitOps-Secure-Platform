@@ -19,3 +19,6 @@ tags = {
   managed_by  = "terraform"
   layer       = "core"
 }
+
+github_repository = "KarimElAtfy/Azure-Terraform-AKS-GitOps-Secure-Platform"
+github_branch     = "main"

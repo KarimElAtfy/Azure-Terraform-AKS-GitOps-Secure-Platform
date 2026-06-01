@@ -67,3 +67,23 @@ output "tenant_id" {
   description = "Azure tenant ID used by this deployment."
   value       = data.azurerm_client_config.current.tenant_id
 }
+
+output "subscription_id" {
+  description = "Azure subscription ID used by this deployment."
+  value       = data.azurerm_client_config.current.subscription_id
+}
+
+output "github_actions_client_id" {
+  description = "Client ID of the GitHub Actions managed identity."
+  value       = azurerm_user_assigned_identity.github_actions.client_id
+}
+
+output "github_actions_principal_id" {
+  description = "Principal ID of the GitHub Actions managed identity."
+  value       = azurerm_user_assigned_identity.github_actions.principal_id
+}
+
+output "github_actions_federated_subject" {
+  description = "GitHub OIDC subject allowed to authenticate as the GitHub Actions managed identity."
+  value       = "repo:${var.github_repository}:ref:refs/heads/${var.github_branch}"
+}
