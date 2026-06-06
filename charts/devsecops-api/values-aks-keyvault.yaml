@@ -1,0 +1,14 @@
+keyVault:
+  enabled: true
+  tenantId: "0a17712b-6df3-425d-808e-309df28a5eeb"
+  keyVaultName: "kv-aks-gitops-secure-quq"
+  clientId: "99f4826b-4d5d-48d3-904b-583574b522a5"
+  secretName: app-demo-secret
+  mountPath: /mnt/secrets-store
+
+serviceAccount:
+  annotations:
+    azure.workload.identity/client-id: "99f4826b-4d5d-48d3-904b-583574b522a5"
+
+podLabels:
+  azure.workload.identity/use: "true"
