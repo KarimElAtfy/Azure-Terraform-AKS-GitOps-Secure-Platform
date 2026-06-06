@@ -1,0 +1,27 @@
+replicaCount: 1
+
+image:
+  repository: acraksgitopssecurequqnak.azurecr.io/devsecops-api
+  tag: latest
+  pullPolicy: Always
+
+appConfig:
+  appName: devsecops-api
+  environment: aks
+  configMessage: "Running on AKS from Azure Container Registry"
+  logLevel: info
+
+version:
+  appVersion: "0.1.0"
+  gitSha: "latest"
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    cpu: 250m
+    memory: 256Mi
+
+keyVault:
+  enabled: false
