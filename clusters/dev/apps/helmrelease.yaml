@@ -1,0 +1,68 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: devsecops-api
+  namespace: devsecops-api
+spec:
+  interval: 1m
+  releaseName: devsecops-api
+  targetNamespace: devsecops-api
+
+  chart:
+    spec:
+      chart: ./charts/devsecops-api
+      sourceRef:
+        kind: GitRepository
+        name: flux-system
+        namespace: flux-system
+      interval: 1m
+
+  install:
+    createNamespace: false
+    remediation:
+      retries: 3
+
+  upgrade:
+    remediation:
+      retries: 3
+
+  values:
+    replicaCount: 1
+
+    image:
+      repository: acraksgitopssecurequqnak.azurecr.io/devsecops-api
+      tag: latest
+      pullPolicy: Always
+
+    appConfig:
+      appName: devsecops-api
+      environment: aks-gitops
+      configMessage: "Running on AKS through Flux GitOps"
+      logLevel: info
+
+    version:
+      appVersion: "0.1.0"
+      gitSha: "latest"
+
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        cpu: 250m
+        memory: 256Mi
+
+    keyVault:
+      enabled: true
+      tenantId: "0a17712b-6df3-425d-808e-309df28a5eeb"
+      keyVaultName: "kv-aks-gitops-secure-quq"
+      clientId: "99f4826b-4d5d-48d3-904b-583574b522a5"
+      secretName: app-demo-secret
+      mountPath: /mnt/secrets-store
+
+    serviceAccount:
+      annotations:
+        azure.workload.identity/client-id: "99f4826b-4d5d-48d3-904b-583574b522a5"
+
+    podLabels:
+      azure.workload.identity/use: "true"
