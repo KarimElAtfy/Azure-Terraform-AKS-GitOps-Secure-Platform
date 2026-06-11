@@ -10,7 +10,7 @@ on:
       - ".github/workflows/build-image.yml"
 
 permissions:
-  contents: read
+  contents: write
   id-token: write
 
 env:
@@ -24,6 +24,9 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          ref: ${{ github.ref_name }}
 
       - name: Azure login with OIDC
         uses: azure/login@v3
@@ -66,10 +69,59 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Update GitOps image tag
+        env:
+          IMAGE_TAG: ${{ steps.meta.outputs.short_sha }}
+        shell: bash
+        run: |
+          python - <<'PY'
+          import os
+          import re
+          from pathlib import Path
+
+          path = Path("clusters/dev/apps/helmrelease.yaml")
+          tag = os.environ["IMAGE_TAG"]
+
+          text = path.read_text()
+
+          updated = re.sub(
+              r"(?m)^(\s*tag:\s*).*$",
+              rf"\g<1>{tag}",
+              text,
+              count=1,
+          )
+
+          updated = re.sub(
+              r"(?m)^(\s*gitSha:\s*).*$",
+              rf'\g<1>"{tag}"',
+              updated,
+              count=1,
+          )
+
+          if updated == text:
+              print("No GitOps tag change produced.")
+          else:
+              path.write_text(updated)
+              print(f"Updated GitOps image tag and gitSha to {tag}.")
+          PY
+
+      - name: Commit GitOps image tag update
+        shell: bash
+        run: |
+          if git diff --quiet -- clusters/dev/apps/helmrelease.yaml; then
+            echo "No GitOps image tag change to commit."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add clusters/dev/apps/helmrelease.yaml
+          git commit -m "chore(gitops): update devsecops-api image tag to ${{ steps.meta.outputs.short_sha }} [skip ci]"
+          git push
+
       - name: Show pushed image references
         run: |
           echo "Pushed:"
           echo "${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.short_sha }}"
           echo "${{ steps.meta.outputs.image }}:latest"
-
-
