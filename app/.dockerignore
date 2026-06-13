@@ -1,16 +1,15 @@
 __pycache__/
-*.pyc
-*.pyo
-*.pyd
+*.py[cod]
 .pytest_cache/
 .coverage
 htmlcov/
+*.log
+
+.env
+.env.*
 
 .venv/
 venv/
 env/
 
 tests/
-.env
-.env.*
-Dockerfile
