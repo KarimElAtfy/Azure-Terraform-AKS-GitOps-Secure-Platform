@@ -9,6 +9,13 @@ spec:
   selector:
     matchLabels:
       {{- include "devsecops-api.selectorLabels" . | nindent 6 }}
+  strategy:
+    type: {{ .Values.deploymentStrategy.type | quote }}
+    {{- if eq .Values.deploymentStrategy.type "RollingUpdate" }}
+    rollingUpdate:
+      maxUnavailable: {{ .Values.deploymentStrategy.rollingUpdate.maxUnavailable | quote }}
+      maxSurge: {{ .Values.deploymentStrategy.rollingUpdate.maxSurge | quote }}
+    {{- end }}
   template:
     metadata:
       labels:
@@ -89,3 +96,4 @@ spec:
             volumeAttributes:
               secretProviderClass: {{ .Values.keyVault.secretProviderClassName | quote }}
       {{- end }}
+

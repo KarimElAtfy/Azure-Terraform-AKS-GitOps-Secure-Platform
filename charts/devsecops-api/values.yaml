@@ -80,3 +80,9 @@ ingress:
         - path: /
           pathType: Prefix
   tls: []
+
+deploymentStrategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxUnavailable: 25%
+    maxSurge: 25%

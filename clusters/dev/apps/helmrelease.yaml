@@ -29,6 +29,9 @@ spec:
   values:
     replicaCount: 1
 
+    deploymentStrategy:
+      type: Recreate
+
     image:
       repository: acraksgitopssecurequqnak.azurecr.io/devsecops-api
       tag: 80d4eff
@@ -66,3 +69,4 @@ spec:
 
     podLabels:
       azure.workload.identity/use: "true"
+

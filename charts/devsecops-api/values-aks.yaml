@@ -25,3 +25,6 @@ resources:
 
 keyVault:
   enabled: false
+
+deploymentStrategy:
+  type: Recreate
