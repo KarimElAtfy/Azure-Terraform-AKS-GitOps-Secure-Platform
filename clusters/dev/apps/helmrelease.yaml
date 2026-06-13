@@ -34,7 +34,7 @@ spec:
 
     image:
       repository: acraksgitopssecurequqnak.azurecr.io/devsecops-api
-      tag: 80d4eff
+      tag: 5a3c285
       pullPolicy: Always
 
     appConfig:
@@ -45,7 +45,7 @@ spec:
 
     version:
       appVersion: "0.1.0"
-      gitSha: "80d4eff"
+      gitSha: "5a3c285"
 
     resources:
       requests:
