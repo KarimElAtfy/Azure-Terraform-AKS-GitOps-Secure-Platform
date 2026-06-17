@@ -1,0 +1,78 @@
+name: Helm AKS GitOps Validation
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "charts/devsecops-api/**"
+      - "clusters/dev/apps/**"
+      - ".github/workflows/helm-aks-validation.yml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "charts/devsecops-api/**"
+      - "clusters/dev/apps/**"
+      - ".github/workflows/helm-aks-validation.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate-aks-gitops-render:
+    name: Validate AKS GitOps Helm render
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v5.0.0
+        with:
+          version: "v3.15.4"
+
+      - name: Lint Helm chart with AKS values
+        run: |
+          helm lint ./charts/devsecops-api \
+            -f ./charts/devsecops-api/values-aks.yaml \
+            -f ./charts/devsecops-api/values-aks-keyvault.yaml
+
+      - name: Render Helm chart with AKS GitOps values
+        run: |
+          helm template devsecops-api ./charts/devsecops-api \
+            -n devsecops-api \
+            -f ./charts/devsecops-api/values-aks.yaml \
+            -f ./charts/devsecops-api/values-aks-keyvault.yaml \
+            > /tmp/devsecops-api-aks-rendered.yaml
+
+          grep -Eq 'type: "?Recreate"?' /tmp/devsecops-api-aks-rendered.yaml
+          grep -q "kind: SecretProviderClass" /tmp/devsecops-api-aks-rendered.yaml
+          grep -q "azure.workload.identity/use" /tmp/devsecops-api-aks-rendered.yaml
+          grep -q "secretProviderClass" /tmp/devsecops-api-aks-rendered.yaml
+          grep -q "devsecops-api-keyvault" /tmp/devsecops-api-aks-rendered.yaml
+
+      - name: Validate GitOps HelmRelease metadata
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          text = Path("clusters/dev/apps/helmrelease.yaml").read_text()
+
+          image_tag = re.search(r'(?m)^\s*tag:\s*"?([^"\s]+)"?', text)
+          git_sha = re.search(r'(?m)^\s*gitSha:\s*"?([^"\s]+)"?', text)
+
+          assert image_tag, "image.tag not found in HelmRelease"
+          assert git_sha, "version.gitSha not found in HelmRelease"
+
+          assert image_tag.group(1) == git_sha.group(1), (
+              f"image.tag ({image_tag.group(1)}) does not match gitSha ({git_sha.group(1)})"
+          )
+
+          assert "deploymentStrategy:" in text, "deploymentStrategy is missing"
+          assert re.search(r'(?m)^\s*type:\s*Recreate\s*$', text), "deploymentStrategy.type must be Recreate"
+
+          print("GitOps HelmRelease metadata is valid.")
+          PY
