@@ -88,7 +88,7 @@ flowchart TB
 │       ├── apps/           # HelmRelease, namespace, repo source
 │       └── policies/       # NetworkPolicy
 ├── k8s/                    # Local dev manifests, RBAC, troubleshooting
-├── scripts/                # Quota checks, smoke tests, cleanup
+├── scripts/                # Local kind helper scripts and validation utilities
 ├── docs/                   # Architecture, deployment, security, runbooks
 │   ├── phase-0-review.md   # Guardrails corrected before implementation
 │   └── incidents/          # Incident writeups (ImagePullBackOff, probe failures, etc.)
@@ -224,3 +224,4 @@ cd ../bootstrap && terraform destroy
 ## License
 
 MIT
+
