@@ -18,10 +18,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
@@ -39,7 +39,7 @@ jobs:
           docker build -t devsecops-api:ci ./app
 
       - name: Set up Helm
-        uses: azure/setup-helm@v4
+        uses: azure/setup-helm@v5.0.0
         with:
           version: "v3.15.4"
 
@@ -79,3 +79,4 @@ jobs:
             --set keyVault.keyVaultName=dummy-keyvault \
             --set keyVault.tenantId=dummy-tenant-id \
             | grep -q "kind: SecretProviderClass"
+
