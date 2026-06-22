@@ -1,6 +1,6 @@
 # Incident 003: Secret Mount / Access Failed
 
-> To be completed with real debugging experience during Phase 7.
+> Draft runbook. Real Key Vault CSI output can be added after Workload Identity is wired in AKS.
 
 ## Symptoms
 
@@ -30,15 +30,15 @@ az keyvault secret show --vault-name <vault-name> --name app-demo-secret --query
 
 ## Possible Root Causes
 
-1. **Federated credential misconfigured** — the ServiceAccount name/namespace doesn't match the federation.
-2. **Missing Key Vault role** — the Managed Identity doesn't have `Key Vault Secrets User` on the vault.
-3. **Secret doesn't exist** — the secret hasn't been created in Key Vault.
-4. **CSI driver not enabled** — AKS addon `azure-keyvault-secrets-provider` is not installed.
-5. **Wrong tenant/client ID** — SecretProviderClass references incorrect identity details.
+1. **Federated credential misconfigured**: the ServiceAccount name/namespace doesn't match the federation.
+2. **Missing Key Vault role**: the Managed Identity doesn't have `Key Vault Secrets User` on the vault.
+3. **Secret doesn't exist**: the secret hasn't been created in Key Vault.
+4. **CSI driver not enabled**: AKS addon `azure-keyvault-secrets-provider` is not installed.
+5. **Wrong tenant/client ID**: SecretProviderClass references incorrect identity details.
 
 ## Fix
 
-_To be completed with actual resolution steps._
+_Planned: add the exact fix from the first real Key Vault mount failure._
 
 ## Prevention
 

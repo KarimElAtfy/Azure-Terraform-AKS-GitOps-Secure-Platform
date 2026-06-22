@@ -1,8 +1,8 @@
 # Local Kubernetes Lab
 
-This document records the local Kubernetes validation for the AKS GitOps Secure Platform project.
+Notes from the local Kubernetes validation run.
 
-The goal of this lab is to prove that the FastAPI application can run as a Kubernetes workload before moving to Azure AKS.
+I use this lab to check the app and Helm chart locally before moving anything to AKS.
 
 ## Environment
 
@@ -18,7 +18,7 @@ The goal of this lab is to prove that the FastAPI application can run as a Kuber
 
 Before deploying to AKS, the application and Helm chart are tested locally.
 
-This validates:
+Things checked here:
 
 - the Docker image can run in Kubernetes
 - the Helm chart renders valid manifests
@@ -162,7 +162,7 @@ The `/error-test` endpoint intentionally returns HTTP 500:
 {"detail":"Intentional test error for observability validation."}
 ```
 
-This is expected and is used to validate application logs and troubleshooting workflows.
+That response is intentional. It gives me a predictable error to verify logs and troubleshooting steps.
 
 ## Logs
 
@@ -195,7 +195,7 @@ GET /error-test HTTP/1.1" 500 Internal Server Error
 
 The local Kubernetes validation is successful.
 
-The application runs correctly as a Kubernetes workload using Helm, with health probes, readiness probes, ConfigMap configuration, pod metadata and basic logging working as expected.
+The app runs locally in Kubernetes through Helm. Probes, ConfigMap values, pod metadata and logs are working.
 
 ## Helper Scripts
 
@@ -207,7 +207,7 @@ The local Kubernetes workflow can be repeated with PowerShell helper scripts.
 .\scripts\local-kind-load-image.ps1
 ```
 
-This script:
+What it does:
 
 - builds the local Docker image `devsecops-api:local`
 - checks that the kind cluster `aks-gitops-local` exists
@@ -219,7 +219,7 @@ This script:
 .\scripts\local-kind-deploy.ps1
 ```
 
-This script:
+What it does:
 
 - runs `helm upgrade --install`
 - uses `charts/devsecops-api/values-dev.yaml`
@@ -233,7 +233,7 @@ This script:
 .\scripts\local-kind-test.ps1
 ```
 
-This script:
+What it does:
 
 - starts a temporary `kubectl port-forward`
 - tests `/health`, `/ready`, `/version`, `/config`, `/secret-status`, `/pod-info` and `/error-test`
@@ -246,7 +246,7 @@ This script:
 .\scripts\local-kind-cleanup.ps1
 ```
 
-This script:
+What it does:
 
 - uninstalls the Helm release if it exists
 - deletes the `devsecops-api` namespace if it exists

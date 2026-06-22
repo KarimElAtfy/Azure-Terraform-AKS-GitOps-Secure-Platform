@@ -1,6 +1,6 @@
 # Architecture Decisions
 
-This document records the key decisions made for this project and the reasoning behind each one. Written in ADR (Architecture Decision Record) style.
+Short ADR-style notes for the main choices in this project.
 
 ---
 
@@ -8,11 +8,11 @@ This document records the key decisions made for this project and the reasoning 
 
 **Status:** Accepted
 
-**Context:** L5 deployed a containerized app to Azure Container Apps, which is a managed serverless container platform. It abstracts away Kubernetes entirely. To demonstrate Kubernetes fundamentals — pod lifecycle, probes, scheduling, scaling, RBAC, network policies — we need a platform where those concepts are exposed and configurable.
+**Context:** L5 deployed a containerized app to Azure Container Apps, which is a managed serverless container platform. It abstracts away Kubernetes entirely. For Kubernetes practice, I wanted those pieces to be visible and configurable: pod lifecycle, probes, scheduling, scaling, RBAC and network policies.
 
 **Decision:** Use Azure Kubernetes Service (AKS) as the compute platform.
 
-**Consequences:** AKS gives full access to the Kubernetes API. It requires more operational knowledge (node management, cluster upgrades, networking choices) but demonstrates skills that employers expect from Cloud/DevOps engineers. The tradeoff is higher complexity and cost compared to Container Apps.
+**Consequences:** AKS gives access to the Kubernetes API and forces the project to deal with real operational topics: node pools, upgrades, networking and permissions. The tradeoff is higher complexity and cost compared to Container Apps.
 
 ---
 
@@ -43,7 +43,7 @@ This document records the key decisions made for this project and the reasoning 
 - CLI-first approach matches the DevOps workflow style of this portfolio.
 - No need for a dashboard UI in a dev/portfolio project.
 
-**Consequences:** No web dashboard for deployments. Debugging is through `flux` CLI and `kubectl`. This is fine for a dev environment and actually demonstrates deeper operational comfort.
+**Consequences:** No web dashboard for deployments. Debugging is through `flux` CLI and `kubectl`. For this project, CLI-based debugging is enough and keeps the setup lighter.
 
 ---
 
@@ -63,7 +63,7 @@ This document records the key decisions made for this project and the reasoning 
 
 **Status:** Accepted
 
-**Context:** L5 already uses OIDC for GitHub-to-Azure authentication. Static client secrets are a security risk — they can leak, expire, and require rotation.
+**Context:** L5 already uses OIDC for GitHub-to-Azure authentication. Static client secrets are easy to mishandle: they can leak, expire and need rotation.
 
 **Decision:** Continue using GitHub Actions OIDC with Azure AD federated credentials.
 
@@ -112,7 +112,7 @@ This document records the key decisions made for this project and the reasoning 
 **Decision:** Optimize for minimum viable cost at every layer.
 
 **Specific choices:**
-- AKS Free tier (no SLA, no uptime guarantee — fine for dev).
+- AKS Free tier (no SLA or uptime guarantee, acceptable for dev).
 - Single node pool, 1 node, smallest available AKS-supported VM after checking quota/SKU availability. `Standard_B2s` is only a target candidate.
 - ACR Basic SKU (~$5/month).
 - No Azure Firewall, NAT Gateway, Application Gateway, or WAF.
@@ -120,7 +120,7 @@ This document records the key decisions made for this project and the reasoning 
 - No private endpoints or private DNS zones.
 - Apply → validate → document → destroy workflow.
 
-**Consequences:** The platform is not production-grade in terms of availability or security hardening. But the architecture, patterns, and documentation demonstrate production thinking. The README and docs explicitly state limitations.
+**Consequences:** This is not a production-ready platform. The goal is to practice the same patterns on a small, affordable setup, with limitations documented clearly.
 
 ---
 
@@ -128,7 +128,7 @@ This document records the key decisions made for this project and the reasoning 
 
 **Status:** Accepted
 
-**Context:** Both Terraform (via the kubernetes/helm providers) and Flux can manage Kubernetes resources. If both try to manage the same resource, they will fight — each trying to reconcile to its own version of the desired state.
+**Context:** Both Terraform (via the kubernetes/helm providers) and Flux can manage Kubernetes resources. If both try to manage the same resource, they will fight over the same desired state.
 
 **Decision:** Draw a clear boundary:
 - **Terraform** creates and manages Azure resources only (resource groups, VNet, ACR, Key Vault, AKS cluster, identities, role assignments).

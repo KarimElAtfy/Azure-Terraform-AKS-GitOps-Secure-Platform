@@ -1,10 +1,10 @@
 # Observability
 
-> To be completed in Phase 9.
+> Living notes. Local logs and test-error checks work now; Azure Monitor notes will be added after the AKS deployment.
 
 ## What We Monitor (v1)
 
-This project uses lightweight observability appropriate for a dev environment:
+Observability is intentionally lightweight for v1:
 
 - **Pod logs** via `kubectl logs`
 - **Cluster events** via `kubectl get events`
@@ -40,4 +40,4 @@ kubectl logs -n devsecops-api deployment/devsecops-api --tail=20
 
 ## What Signals Matter
 
-_To be completed._
+_Planned: define the small set of signals to check after every deploy: pod readiness, restart count, recent warning events, app logs and smoke-test result._

@@ -1,6 +1,6 @@
 # Azure-Terraform-AKS-GitOps-Secure-Platform
 
-Production-inspired AKS GitOps platform with Terraform, Docker, ACR, Helm, Flux, Key Vault, Workload Identity, GitHub Actions OIDC, observability, security scanning and smoke tests.
+AKS GitOps platform project built around Terraform-managed Azure infrastructure and Flux-managed Kubernetes workloads.
 
 ## Why This Project
 
@@ -15,7 +15,7 @@ This is **L6** in my Azure/Terraform portfolio progression:
 | L5 | Azure Terraform DevSecOps Container Platform | Container Apps, ACR, Key Vault, CI/CD, security scanning |
 | **L6** | **AKS GitOps Secure Platform** | **Kubernetes, Helm, Flux GitOps, Workload Identity** |
 
-L5 deployed containers to Azure Container Apps using GitHub Actions as the deployment mechanism. L6 moves to Kubernetes (AKS) with **GitOps**: Flux watches this repository and reconciles cluster state automatically. This is how production teams operate — infrastructure as code for the cloud layer, GitOps for the workload layer.
+L5 deployed containers to Azure Container Apps using GitHub Actions as the deployment mechanism. L6 moves to Kubernetes (AKS) with **GitOps**: Flux watches this repository and reconciles cluster state automatically. The point is to keep a clean split: Terraform handles the Azure layer, while GitOps handles what runs inside the cluster.
 
 ## Architecture
 
@@ -106,14 +106,14 @@ flowchart TB
 
 ## Deployment Flow
 
-1. **Bootstrap** — Create Terraform remote state storage account.
-2. **Core** — Provision resource group, VNet, ACR, Key Vault, Log Analytics, identities.
-3. **AKS** — Provision AKS cluster with OIDC issuer, ACR pull, Log Analytics integration.
-4. **Flux** — Bootstrap Flux on the cluster, pointing at `clusters/dev/`.
-5. **Image** — GitHub Actions builds the app image and pushes to ACR.
-6. **GitOps** — GitHub Actions updates the image tag in Git with loop protection (`paths-ignore` or `[skip ci]`); Flux deploys it.
-7. **Validate** — Smoke tests confirm the app is running.
-8. **Cleanup** — `terraform destroy` in reverse order when done.
+1. **Bootstrap**: Create Terraform remote state storage account.
+2. **Core**: Provision resource group, VNet, ACR, Key Vault, Log Analytics, identities.
+3. **AKS**: Provision AKS cluster with OIDC issuer, ACR pull, Log Analytics integration.
+4. **Flux**: Bootstrap Flux on the cluster, pointing at `clusters/dev/`.
+5. **Image**: GitHub Actions builds the app image and pushes to ACR.
+6. **GitOps**: GitHub Actions updates the image tag in Git with loop protection (`paths-ignore` or `[skip ci]`); Flux deploys it.
+7. **Validate**: Smoke tests confirm the app is running.
+8. **Cleanup**: `terraform destroy` in reverse order when done.
 
 ## GitOps Flow
 
@@ -121,7 +121,7 @@ flowchart TB
 code change → PR → merge → image build → tag update in Git → Flux reconciles → app deployed
 ```
 
-GitHub Actions builds and pushes the image. Flux owns the deployment. `kubectl apply` is not the deployment mechanism — Git is.
+GitHub Actions builds and pushes the image. Flux owns the deployment. `kubectl apply` is not the deployment mechanism: Git is.
 
 ## Security Model
 
@@ -190,7 +190,7 @@ cd infra/aks && terraform destroy
 # Destroy core resources
 cd ../core && terraform destroy
 
-# Destroy bootstrap (optional — state storage is cheap)
+# Destroy bootstrap (optional: state storage is cheap)
 cd ../bootstrap && terraform destroy
 
 # Verify in Azure Portal that the resource group is gone

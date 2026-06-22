@@ -1,6 +1,6 @@
 # Deployment Guide
 
-> This guide will be completed as each phase is built. Sections are placeholders until the corresponding phase is implemented.
+> Work-in-progress deployment notes. Local Kubernetes validation is documented separately; Azure steps are filled in as each Terraform/GitOps layer is built.
 
 ## Prerequisites
 
@@ -47,27 +47,27 @@ Do not commit the real `backend.hcl`. Commit only `backend.hcl.example`.
 
 ## Phase 2: Bootstrap (Terraform Remote State)
 
-_To be completed in Phase 3._
+_Planned: add commands and validation output when this layer is implemented._
 
 ## Phase 3: Core Resources
 
-_To be completed in Phase 3._
+_Planned: add commands and validation output when this layer is implemented._
 
 ## Phase 4: AKS Cluster
 
-_To be completed in Phase 4._
+_Planned: add commands and validation output when the AKS layer is implemented._
 
 ## Phase 5: Flux Bootstrap
 
-_To be completed in Phase 6._
+_Planned: add commands and validation output when Flux and the app deployment are wired._
 
 ## Phase 6: App Deployment
 
-_To be completed in Phase 6._
+_Planned: add commands and validation output when Flux and the app deployment are wired._
 
 ## Validation
 
-_To be completed as phases are built._
+_Planned: keep this as the final checklist for Azure-side validation._
 
 ## Cleanup
 

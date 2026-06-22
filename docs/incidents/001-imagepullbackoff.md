@@ -1,6 +1,6 @@
 # Incident 001: ImagePullBackOff
 
-> To be completed with real debugging experience during Phase 4-6.
+> Draft runbook. I will add real AKS command output after the image build and ACR flow are tested.
 
 ## Symptoms
 
@@ -19,14 +19,14 @@ az role assignment list --assignee <kubelet-identity-id> -o table
 
 ## Possible Root Causes
 
-1. **Wrong image tag** — the tag in the HelmRelease doesn't match any tag in ACR.
-2. **Missing ACR pull permission** — the AKS kubelet identity doesn't have AcrPull on the registry.
-3. **Wrong ACR login server** — typo in the image repository URL.
-4. **ACR doesn't exist** — core Terraform wasn't applied, or was destroyed.
+1. **Wrong image tag**: the tag in the HelmRelease doesn't match any tag in ACR.
+2. **Missing ACR pull permission**: the AKS kubelet identity doesn't have AcrPull on the registry.
+3. **Wrong ACR login server**: typo in the image repository URL.
+4. **ACR doesn't exist**: core Terraform wasn't applied, or was destroyed.
 
 ## Fix
 
-_To be completed with actual resolution steps._
+_Planned: add the exact fix used during the first real ACR/AKS image-pull failure._
 
 ## Prevention
 
