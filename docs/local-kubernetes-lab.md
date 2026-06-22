@@ -196,3 +196,66 @@ GET /error-test HTTP/1.1" 500 Internal Server Error
 The local Kubernetes validation is successful.
 
 The application runs correctly as a Kubernetes workload using Helm, with health probes, readiness probes, ConfigMap configuration, pod metadata and basic logging working as expected.
+
+## Helper Scripts
+
+The local Kubernetes workflow can be repeated with PowerShell helper scripts.
+
+### Build and Load Image
+
+```powershell
+.\scripts\local-kind-load-image.ps1
+```
+
+This script:
+
+- builds the local Docker image `devsecops-api:local`
+- checks that the kind cluster `aks-gitops-local` exists
+- loads the image into the kind cluster
+
+### Deploy With Helm
+
+```powershell
+.\scripts\local-kind-deploy.ps1
+```
+
+This script:
+
+- runs `helm upgrade --install`
+- uses `charts/devsecops-api/values-dev.yaml`
+- deploys to the `devsecops-api` namespace
+- prints Helm release status
+- prints Kubernetes resources and pod status
+
+### Test Endpoints
+
+```powershell
+.\scripts\local-kind-test.ps1
+```
+
+This script:
+
+- starts a temporary `kubectl port-forward`
+- tests `/health`, `/ready`, `/version`, `/config`, `/secret-status`, `/pod-info` and `/error-test`
+- prints recent application logs
+- stops the port-forward process automatically
+
+### Cleanup
+
+```powershell
+.\scripts\local-kind-cleanup.ps1
+```
+
+This script:
+
+- uninstalls the Helm release if it exists
+- deletes the `devsecops-api` namespace if it exists
+- keeps the kind cluster by default
+
+To also delete the kind cluster:
+
+```powershell
+.\scripts\local-kind-cleanup.ps1 -DeleteCluster
+```
+
+The cluster deletion flag is intentionally explicit to avoid accidentally destroying the local Kubernetes environment.
