@@ -1,173 +1,388 @@
 # Architecture Decisions
 
-Short ADR-style notes for the main choices in this project.
+This document records the main technical decisions behind the Azure Terraform AKS GitOps Secure Platform.
 
----
+## ADR-001: Use AKS after Azure Container Apps
 
-## ADR-001: AKS after Container Apps
+Status: Accepted
 
-**Status:** Accepted
+### Context
 
-**Context:** L5 deployed a containerized app to Azure Container Apps, which is a managed serverless container platform. It abstracts away Kubernetes entirely. For Kubernetes practice, I wanted those pieces to be visible and configurable: pod lifecycle, probes, scheduling, scaling, RBAC and network policies.
+The previous portfolio project deployed a containerized app to Azure Container Apps. That was useful for serverless containers, but it abstracted away Kubernetes concepts.
 
-**Decision:** Use Azure Kubernetes Service (AKS) as the compute platform.
+This project focuses on Kubernetes operations: pods, probes, scheduling, Helm, Flux, NetworkPolicy, Workload Identity and rollout debugging.
 
-**Consequences:** AKS gives access to the Kubernetes API and forces the project to deal with real operational topics: node pools, upgrades, networking and permissions. The tradeoff is higher complexity and cost compared to Container Apps.
+### Decision
 
----
+Use Azure Kubernetes Service as the compute platform.
 
-## ADR-002: Terraform for Infrastructure
+### Consequences
 
-**Status:** Accepted
+AKS increases complexity and cost compared to Container Apps, but it exposes real Kubernetes operational topics that are valuable for Cloud and DevOps practice.
 
-**Context:** The entire portfolio is built on Terraform. Consistency matters for a portfolio, and Terraform is the most widely requested IaC tool in job postings.
+## ADR-002: Use Terraform for Azure Infrastructure
 
-**Decision:** Continue using Terraform with the azurerm provider for all Azure infrastructure.
+Status: Accepted
 
-**Consequences:** Three Terraform layers (bootstrap, core, aks) keep concerns separated. Each layer has its own state file. Modules improve reusability without over-engineering.
+### Context
 
----
+The portfolio is Terraform-based, and Terraform is widely used for infrastructure automation.
 
-## ADR-003: Flux for GitOps (not ArgoCD)
+### Decision
 
-**Status:** Accepted
+Use Terraform with the AzureRM provider for Azure infrastructure.
 
-**Context:** Two major GitOps tools exist: Flux and ArgoCD. ArgoCD has a web UI and is more popular for visual cluster management. Flux is lighter, CLI-first, and integrates natively with Helm and Kustomize.
+Terraform manages:
 
-**Decision:** Use Flux v2.
+- resource groups
+- networking
+- Azure Container Registry
+- Key Vault
+- Log Analytics
+- AKS
+- managed identities
+- role assignments
+- federated credentials
 
-**Reasons:**
-- Flux is lighter on cluster resources (important for a single small node).
-- Flux is a CNCF graduated project.
-- Flux has native HelmRelease and Kustomization CRDs.
-- CLI-first approach matches the DevOps workflow style of this portfolio.
-- No need for a dashboard UI in a dev/portfolio project.
+### Consequences
 
-**Consequences:** No web dashboard for deployments. Debugging is through `flux` CLI and `kubectl`. For this project, CLI-based debugging is enough and keeps the setup lighter.
+The project has a reproducible infrastructure layer and keeps infrastructure changes reviewable in Git.
 
----
+## ADR-003: Split Terraform into bootstrap, core and AKS layers
 
-## ADR-004: Helm for Kubernetes Packaging
+Status: Accepted
 
-**Status:** Accepted
+### Context
 
-**Context:** Kubernetes manifests can be managed as raw YAML, Kustomize overlays, or Helm charts. Helm is the most common packaging format in the industry and supports templating, versioning, and values overrides.
+Remote state storage must exist before other layers can use it.
 
-**Decision:** Use Helm charts for the application deployment.
+The AKS layer also depends on core resources such as ACR, Key Vault, identities and Log Analytics.
 
-**Consequences:** The chart lives in `charts/devsecops-api/` inside this repo. Flux deploys it via a HelmRelease that references a GitRepository source. This avoids needing a separate Helm registry while still using Helm's templating capabilities.
+### Decision
 
----
+Use three Terraform layers:
 
-## ADR-005: GitHub Actions OIDC (no static secrets)
+~~~text
+infra/bootstrap/
+infra/core/
+infra/aks/
+~~~
 
-**Status:** Accepted
+### Consequences
 
-**Context:** L5 already uses OIDC for GitHub-to-Azure authentication. Static client secrets are easy to mishandle: they can leak, expire and need rotation.
+The deployment order is explicit:
 
-**Decision:** Continue using GitHub Actions OIDC with Azure AD federated credentials.
+~~~text
+bootstrap → core → aks
+~~~
 
-**Consequences:** No `AZURE_CLIENT_SECRET` in GitHub Secrets. Authentication is token-based and short-lived. Requires setting up a federated credential on an Azure AD App Registration or Managed Identity, scoped to this repository.
+This keeps each state file smaller and separates concerns.
 
----
+## ADR-004: Use Flux for GitOps
 
-## ADR-006: Workload Identity for Key Vault Access
+Status: Accepted
 
-**Status:** Accepted
+### Context
 
-**Context:** The app needs to read a secret from Azure Key Vault. Options include: mounting secrets as environment variables via Kubernetes Secrets (insecure at rest), using the Key Vault CSI Driver with pod identity, or using the Key Vault CSI Driver with Workload Identity.
+The project needs a GitOps controller that continuously reconciles Kubernetes desired state from Git.
 
-**Decision:** Use AKS Workload Identity with the Key Vault CSI Driver to mount secrets into the pod.
+Options include Flux and Argo CD.
 
-**Reasons:**
-- No credentials stored in the cluster.
-- The pod's ServiceAccount is federated with an Azure Managed Identity.
-- The Managed Identity has a scoped role assignment (Key Vault Secrets User).
-- This is the current Microsoft-recommended approach.
+### Decision
 
-**Consequences:** Requires enabling OIDC Issuer and Workload Identity on AKS, creating a federated identity credential, and configuring a SecretProviderClass. More setup than a Kubernetes Secret, but significantly more secure and representative of production patterns.
+Use Flux v2.
 
-**Fallback:** If Workload Identity setup proves too complex for the first iteration, a temporary Kubernetes Secret can be used for local testing only, clearly marked as non-production.
+### Reasons
 
----
+- lightweight
+- CLI-first
+- native Kustomization support
+- native HelmRelease support
+- good fit for a single-node dev cluster
+- no dashboard requirement in v1
 
-## ADR-007: Public Dev AKS (not private cluster)
+### Consequences
 
-**Status:** Accepted
+There is no web dashboard. Debugging is done with:
 
-**Context:** Production AKS clusters typically use private API server endpoints, private link, Azure Firewall, and jump boxes. These add significant cost (Azure Firewall alone is ~$800/month) and complexity.
+~~~powershell
+flux
+kubectl
+helm
+~~~
 
-**Decision:** Use a public AKS cluster for this dev/portfolio project.
+## ADR-005: Use Helm for application packaging
 
-**Consequences:** The API server is publicly accessible (protected by Azure AD authentication). This is acceptable for a dev environment with no real workloads. The architecture document acknowledges this as a limitation and lists private cluster as a future improvement.
+Status: Accepted
 
----
+### Context
 
-## ADR-008: Cost-Conscious Design
+Kubernetes manifests can be managed as raw YAML, Kustomize overlays or Helm charts.
 
-**Status:** Accepted
+Helm is widely used in real Kubernetes environments and supports templating, values and chart versioning.
 
-**Context:** This project runs on a personal Azure subscription with limited budget and possible quota constraints.
+### Decision
 
-**Decision:** Optimize for minimum viable cost at every layer.
+Use a Helm chart for the FastAPI application.
 
-**Specific choices:**
-- AKS Free tier (no SLA or uptime guarantee, acceptable for dev).
-- Single node pool, 1 node, smallest available AKS-supported VM after checking quota/SKU availability. `Standard_B2s` is only a target candidate.
-- ACR Basic SKU (~$5/month).
-- No Azure Firewall, NAT Gateway, Application Gateway, or WAF.
-- No managed Prometheus/Grafana in v1.
-- No private endpoints or private DNS zones.
-- Apply → validate → document → destroy workflow.
+Chart path:
 
-**Consequences:** This is not a production-ready platform. The goal is to practice the same patterns on a small, affordable setup, with limitations documented clearly.
+~~~text
+charts/devsecops-api/
+~~~
 
----
+### Consequences
 
-## ADR-009: Terraform and Flux Boundary
+Flux deploys the app through a HelmRelease that references the chart path in this same Git repository.
 
-**Status:** Accepted
+## ADR-006: Use GitRepository + HelmRelease for the in-repo chart
 
-**Context:** Both Terraform (via the kubernetes/helm providers) and Flux can manage Kubernetes resources. If both try to manage the same resource, they will fight over the same desired state.
+Status: Accepted
 
-**Decision:** Draw a clear boundary:
-- **Terraform** creates and manages Azure resources only (resource groups, VNet, ACR, Key Vault, AKS cluster, identities, role assignments).
-- **Flux/Helm** create and manage Kubernetes resources only (namespaces, deployments, services, configmaps, network policies, SecretProviderClass).
+### Context
 
-**Consequences:** Terraform outputs provide the non-secret values that Flux/Helm need (ACR login server, Key Vault name, identity client ID). These are passed into Helm values or Flux configuration. Neither tool touches the other's domain.
+The Helm chart is stored inside this repository.
 
----
+A HelmRepository is useful when charts are published to an external Helm or OCI registry.
 
-## ADR-010: Globally Unique Azure Names
+### Decision
 
-**Status:** Accepted
+Use Flux GitRepository + HelmRelease.
 
-**Context:** Azure Storage Account, Azure Container Registry and Key Vault names are globally unique. Fixed demo names can fail immediately if someone else already owns them.
+### Consequences
 
-**Decision:** Use either a generated random suffix or a documented `name_suffix` variable for globally unique resources. README examples may show readable names, but Terraform code must not rely on fixed global names.
+The project remains single-repository and easy to inspect.
 
-**Consequences:** Resource names are slightly less pretty, but deployments become reproducible across subscriptions.
+The HelmRelease references:
 
----
+~~~text
+./charts/devsecops-api
+~~~
 
-## ADR-011: Flux Source for In-Repo Helm Chart
+## ADR-007: Use GitHub Actions OIDC instead of static secrets
 
-**Status:** Accepted
+Status: Accepted
 
-**Context:** The Helm chart is stored in this same repository under `charts/devsecops-api/`. Flux supports deploying Helm charts from a Git source or from a Helm repository.
+### Context
 
-**Decision:** Use a Flux `GitRepository` source plus `HelmRelease` for v1. Do not use `HelmRepository` unless the chart is later published to an external Helm/OCI registry.
+Long-lived Azure client secrets are risky because they can leak, expire and require rotation.
 
-**Consequences:** The project stays single-repository and simple. The GitOps source of truth is easier to understand.
+### Decision
 
----
+Use GitHub Actions OIDC federation with Azure.
 
-## ADR-012: GitHub Actions Loop Protection
+### Consequences
 
-**Status:** Accepted
+The workflows do not need an AZURE_CLIENT_SECRET.
 
-**Context:** The image build workflow may commit updated image tags under `clusters/dev/`. That commit can retrigger CI and accidentally create a loop.
+GitHub Actions receives short-lived tokens through federated identity.
 
-**Decision:** Use path filters, workflow separation, or `[skip ci]` commit messages for automated GitOps tag commits.
+## ADR-008: Use ACR for container images
 
-**Consequences:** The pipeline remains predictable and avoids unnecessary builds.
+Status: Accepted
+
+### Context
+
+The app image needs to be available to AKS.
+
+### Decision
+
+Use Azure Container Registry Basic SKU.
+
+### Consequences
+
+The build workflow pushes images to ACR with:
+
+- short Git SHA tag
+- latest tag
+
+The GitOps deployment uses the short Git SHA tag.
+
+## ADR-009: Use Workload Identity and Key Vault CSI for secrets
+
+Status: Accepted
+
+### Context
+
+The app needs to read a secret without storing it in Git or plain Kubernetes manifests.
+
+### Decision
+
+Use AKS Workload Identity with the Secrets Store CSI Driver and Azure Key Vault.
+
+### Consequences
+
+The pod authenticates through a federated Kubernetes ServiceAccount and reads a Key Vault secret mounted as a file.
+
+The app proves access through `/secret-status` without exposing the secret value.
+
+## ADR-010: Keep Terraform and Flux ownership separate
+
+Status: Accepted
+
+### Context
+
+Terraform and Flux can both manage Kubernetes resources. If both manage the same objects, they can conflict.
+
+### Decision
+
+Terraform manages Azure infrastructure only.
+
+Flux and Helm manage Kubernetes workload resources only.
+
+### Consequences
+
+Terraform does not deploy the app.
+
+GitHub Actions does not run kubectl apply.
+
+Flux owns the cluster workload desired state.
+
+## ADR-011: Use a public dev AKS cluster in v1
+
+Status: Accepted
+
+### Context
+
+Private AKS clusters, private endpoints, Azure Firewall and NAT Gateway add significant cost and complexity.
+
+### Decision
+
+Use a public AKS API server for v1.
+
+### Consequences
+
+This is not a production architecture. It is acceptable for a dev/portfolio project with no real workloads or sensitive business data.
+
+Private networking is listed as a future improvement.
+
+## ADR-012: Optimize for cost
+
+Status: Accepted
+
+### Context
+
+The project runs in a personal/student Azure subscription with limited budget and quota.
+
+### Decision
+
+Use cost-conscious choices:
+
+- single-node AKS
+- smallest available supported node SKU
+- ACR Basic
+- no Azure Firewall
+- no NAT Gateway
+- no Application Gateway
+- no managed Prometheus/Grafana in v1
+- port-forward validation instead of public LoadBalancer
+
+### Consequences
+
+The cluster is not highly available, but it is cheaper and appropriate for learning and portfolio validation.
+
+## ADR-013: Use Recreate rollout strategy for single-node AKS dev
+
+Status: Accepted
+
+### Context
+
+During GitOps image automation testing, RollingUpdate caused rollout failures on the single-node AKS cluster.
+
+Kubernetes tried to keep the old pod running while scheduling the new pod, but the node had insufficient CPU for both pods.
+
+### Decision
+
+Keep the chart default as RollingUpdate, but override AKS dev values with:
+
+~~~yaml
+deploymentStrategy:
+  type: Recreate
+~~~
+
+### Consequences
+
+The dev environment may have a short downtime during app updates, but rollouts are reliable on the small single-node cluster.
+
+The incident is documented in:
+
+~~~text
+docs/incidents/001-rollingupdate-insufficient-cpu.md
+~~~
+
+## ADR-014: Use GitHub Actions for image tag updates in v1
+
+Status: Accepted
+
+### Context
+
+Flux Image Automation could update image tags automatically, but it adds another Flux-specific layer.
+
+### Decision
+
+Use GitHub Actions to update the image tag in the HelmRelease after pushing the image to ACR.
+
+### Consequences
+
+The flow is explicit:
+
+~~~text
+image build → ACR push → HelmRelease tag update → commit with [skip ci] → Flux deploys
+~~~
+
+Flux Image Automation remains a future improvement.
+
+## ADR-015: Add non-blocking security scans first
+
+Status: Accepted
+
+### Context
+
+Security scanners can produce false positives or findings that need triage.
+
+### Decision
+
+Add Checkov and Trivy scanning first, then review findings before making scans blocking.
+
+### Consequences
+
+The repository demonstrates DevSecOps scanning while avoiding noisy pipeline failures during early development.
+
+Future work can make selected checks blocking after findings are reviewed and documented.
+
+## ADR-016: Keep v1 intentionally simple
+
+Status: Accepted
+
+### Context
+
+A portfolio project needs to be understandable, reproducible and cost-controlled.
+
+### Decision
+
+Do not include every possible production feature in v1.
+
+Excluded from v1:
+
+- service mesh
+- private cluster
+- Azure Firewall
+- NAT Gateway
+- managed Prometheus/Grafana
+- multi-environment promotion
+- progressive delivery
+
+### Consequences
+
+The project remains focused on:
+
+- Terraform
+- AKS
+- Helm
+- Flux GitOps
+- GitHub Actions
+- ACR
+- Key Vault
+- Workload Identity
+- CI security scanning
+- practical troubleshooting

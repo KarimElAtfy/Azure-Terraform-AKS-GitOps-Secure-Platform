@@ -1,158 +1,344 @@
 # Architecture
 
-## Overview
+This document describes the architecture of the Azure Terraform AKS GitOps Secure Platform.
 
-The platform is dev-focused and cost-conscious. It uses:
+The platform is a dev-focused, cost-conscious AKS GitOps environment built to demonstrate practical Cloud, DevOps and DevSecOps patterns.
 
-- **Terraform** manages all Azure infrastructure across three layers.
-- **GitHub Actions** builds container images and pushes them to ACR.
-- **Flux** watches this Git repository and deploys workloads to AKS via Helm.
-- **Key Vault + Workload Identity** provides secure secret access without credentials in the pod.
+## Core Idea
 
-**Boundary:** Terraform owns Azure resources. Flux and Helm own Kubernetes workloads. They should not manage the same objects.
+The project is split into two clear ownership layers:
 
-## Azure Resources
+~~~text
+Terraform owns Azure infrastructure.
+Flux + Helm own Kubernetes workloads.
+~~~
 
-```mermaid
-graph TB
-    subgraph "Resource Group: rg-aks-gitops-dev-gwc"
-        VNet["VNet<br>10.0.0.0/16"]
-        AKSSubnet["AKS Subnet<br>10.0.1.0/24"]
-        ACR["ACR Basic<br>acraksdev{suffix}"]
-        KV["Key Vault<br>kv-aks-dev-{suffix}"]
-        LA["Log Analytics<br>Workspace"]
-        AKS["AKS Cluster<br>1 node / smallest available dev SKU"]
-        MI["User-Assigned<br>Managed Identity"]
+This boundary is intentional. It prevents Terraform and Flux from fighting over the same Kubernetes resources.
 
-        VNet --> AKSSubnet
-        AKS --> AKSSubnet
-        AKS --> ACR
-        AKS --> KV
-        AKS --> LA
-        AKS --> MI
-    end
-```
+## High-Level Architecture
 
-## Terraform Layers
+~~~mermaid
+flowchart TB
+    Dev[Developer] --> GH[GitHub Repository]
 
-### Layer 1: Bootstrap (`infra/bootstrap/`)
+    GH --> GHA[GitHub Actions]
+    GHA --> ACR[Azure Container Registry]
+    GHA --> GitOps[Update HelmRelease image tag]
 
-Creates the Azure Storage Account and container used for Terraform remote state. This is applied first and only once. It uses local state intentionally: the state backend can't store its own state.
+    GitOps --> Flux[Flux Controllers]
 
-Resources created:
-- Resource Group for state storage
-- Storage Account
-- Blob Container
-
-### Layer 2: Core (`infra/core/`)
-
-Creates the shared Azure resources that AKS and the application depend on.
-
-Resources created:
-- Resource Group (main project resources)
-- Virtual Network + AKS Subnet
-- Azure Container Registry (Basic SKU, globally unique name)
-- Azure Key Vault (standard SKU, RBAC authorization, globally unique name)
-- Log Analytics Workspace
-- User-Assigned Managed Identity (for workload identity federation)
-- Key Vault role assignment for the workload identity, where possible before AKS federation
-
-### Layer 3: AKS (`infra/aks/`)
-
-Creates the AKS cluster and connects it to the resources from the core layer.
-
-Resources created:
-- AKS Cluster (public, dev-test, Free tier)
-- System node pool (1 node, smallest available AKS-supported dev SKU; Standard_B2s is only a target candidate)
-- OIDC Issuer enabled
-- Workload Identity enabled
-- Key Vault CSI Driver addon
-- Log Analytics integration (Container Insights)
-- ACR pull role assignment for the kubelet identity
-- Federated identity credential linking the Kubernetes ServiceAccount to the user-assigned managed identity
-
-## AKS Cluster Design
-
-```mermaid
-graph TB
-    subgraph "AKS Cluster"
-        subgraph "System Node Pool (1 node)"
-            subgraph "Namespace: devsecops-api"
-                SA["ServiceAccount<br>(federated with MI)"]
-                Deploy["Deployment<br>devsecops-api"]
-                Svc["Service<br>ClusterIP :8000"]
-                CM["ConfigMap"]
-                SPC["SecretProviderClass"]
-                NP["NetworkPolicy"]
-
-                SA --> Deploy
-                CM --> Deploy
-                SPC --> Deploy
-                Deploy --> Svc
-                NP --> Deploy
-            end
-
-            subgraph "Namespace: flux-system"
-                Flux["Flux Controllers"]
-            end
-        end
+    subgraph Azure["Azure - Terraform managed"]
+        RG[Resource Group]
+        VNet[Virtual Network]
+        Subnet[AKS Subnet]
+        KV[Azure Key Vault]
+        LA[Log Analytics]
+        MI[Managed Identities]
+        AKS[AKS Cluster]
     end
 
-    Flux -->|"reconciles"| Deploy
-```
+    subgraph AKSCluster["AKS - Flux and Helm managed"]
+        Flux --> HR[HelmRelease]
+        HR --> Helm[Helm chart rendering]
+        Helm --> NS[Namespace devsecops-api]
+        Helm --> SA[ServiceAccount]
+        Helm --> Deploy[Deployment devsecops-api]
+        Helm --> SVC[ClusterIP Service]
+        Helm --> SPC[SecretProviderClass]
+        Helm --> NP[NetworkPolicy]
+        Deploy --> Pod[FastAPI Pod]
+    end
 
-## Application Deployment Model
+    AKS --> AKSCluster
+    ACR --> Pod
+    Pod --> KV
+    AKS --> LA
+    SA --> MI
+~~~
 
-The app is never deployed by `kubectl apply` or by GitHub Actions directly. The flow is:
+## Azure Infrastructure Layer
 
-1. Developer merges code to `main`.
-2. GitHub Actions builds the Docker image, tags it with the git commit SHA, and pushes to ACR.
-3. GitHub Actions updates the image tag in `clusters/dev/apps/helmrelease.yaml` and commits with loop protection (`paths-ignore` or `[skip ci]`).
-4. Flux detects the Git change within its polling interval.
-5. Flux reconciles the HelmRelease, which renders the Helm chart with the new tag.
-6. Kubernetes pulls the new image from ACR and rolls out the deployment.
+Terraform is divided into three layers.
 
-This is the GitOps pattern: **Git is the source of truth for desired state.** The cluster continuously converges toward what Git says.
+~~~text
+infra/bootstrap/
+infra/core/
+infra/aks/
+~~~
 
-## Network Design
+### Bootstrap Layer
 
-Simple flat network for dev:
-- VNet: `10.0.0.0/16`
-- AKS Subnet: `10.0.1.0/24`
-- AKS networking mode must be chosen explicitly during implementation after checking current AKS support and project needs.
-- NetworkPolicy support must match the selected AKS networking/policy engine.
-- No Azure Firewall, NAT Gateway, or private endpoints in v1
-- AKS API server is public (dev-test only)
+Path:
 
-## Identity and Access
+~~~text
+infra/bootstrap/
+~~~
 
-```mermaid
+Purpose:
+
+- creates Terraform remote state resource group
+- creates Storage Account
+- creates Blob container for state files
+
+This layer uses local state because the remote backend does not exist yet.
+
+### Core Layer
+
+Path:
+
+~~~text
+infra/core/
+~~~
+
+Purpose:
+
+- main resource group
+- virtual network
+- AKS subnet
+- Azure Container Registry
+- Azure Key Vault
+- Log Analytics workspace
+- workload managed identity
+- GitHub Actions managed identity
+- role assignments
+- federated credentials for GitHub Actions
+
+### AKS Layer
+
+Path:
+
+~~~text
+infra/aks/
+~~~
+
+Purpose:
+
+- AKS cluster
+- single-node system node pool
+- OIDC issuer
+- Workload Identity
+- Key Vault CSI driver addon
+- Log Analytics integration
+- AcrPull assignment for AKS image pulls
+- federated identity credential for the application ServiceAccount
+
+## Kubernetes Workload Layer
+
+Flux and Helm manage Kubernetes resources.
+
+Main paths:
+
+~~~text
+clusters/dev/
+charts/devsecops-api/
+~~~
+
+### Flux Desired State
+
+Path:
+
+~~~text
+clusters/dev/
+~~~
+
+Contains:
+
+- Flux bootstrap manifests
+- application namespace
+- HelmRelease
+- NetworkPolicy
+
+### Helm Chart
+
+Path:
+
+~~~text
+charts/devsecops-api/
+~~~
+
+The Helm chart renders:
+
+- ServiceAccount
+- ConfigMap
+- Deployment
+- Service
+- optional HPA
+- optional Ingress
+- SecretProviderClass
+- NetworkPolicy through GitOps policy manifests
+
+## Application Deployment Flow
+
+~~~mermaid
+sequenceDiagram
+    participant Dev as Developer
+    participant GH as GitHub
+    participant GHA as GitHub Actions
+    participant ACR as Azure Container Registry
+    participant Flux as Flux
+    participant Helm as Helm Controller
+    participant AKS as AKS
+
+    Dev->>GH: Push app change
+    GH->>GHA: Trigger image build workflow
+    GHA->>ACR: Push image with git SHA tag
+    GHA->>GH: Update HelmRelease image tag with [skip ci]
+    Flux->>GH: Detect new Git revision
+    Flux->>Helm: Reconcile HelmRelease
+    Helm->>AKS: Apply rendered manifests
+    AKS->>ACR: Pull image
+    AKS->>AKS: Run updated pod
+~~~
+
+## Identity Architecture
+
+~~~mermaid
 flowchart LR
-    GHA["GitHub Actions"] -->|"OIDC federation"| Azure["Azure AD"]
-    AKSKubelet["AKS Kubelet Identity"] -->|"AcrPull role"| ACR
-    WorkloadMI["Workload Managed Identity"] -->|"Key Vault Secrets User"| KV["Key Vault"]
-    Pod["App Pod"] -->|"ServiceAccount<br>federated"| WorkloadMI
-```
+    GHA[GitHub Actions] -->|OIDC federation| AzureAD[Microsoft Entra ID]
+    AzureAD -->|short-lived token| Azure[Azure APIs]
 
-- GitHub Actions uses OIDC: no client secrets stored in GitHub.
-- AKS kubelet identity has AcrPull on the container registry.
-- A user-assigned managed identity is federated with a Kubernetes ServiceAccount.
-- The pod uses that ServiceAccount to access Key Vault via Workload Identity.
+    Kubelet[AKS kubelet identity] -->|AcrPull| ACR[Azure Container Registry]
 
-## Naming and Uniqueness
+    Pod[Application Pod] --> SA[Kubernetes ServiceAccount]
+    SA -->|federated subject| WI[Workload Managed Identity]
+    WI -->|Key Vault Secrets User| KV[Azure Key Vault]
+    KV --> CSI[Secrets Store CSI Driver]
+    CSI --> Pod
+~~~
 
-Azure Storage Account, Azure Container Registry and Key Vault names are globally unique. The implementation must not rely on fixed names such as `staksgitosstatedev` or `acraksdevgwc` without a suffix. Use either:
+## Secret Flow
 
-- a generated random suffix in Terraform, or
-- a user-provided `name_suffix` variable documented in `terraform.tfvars.example`.
+The application does not receive secrets from Git or plain Kubernetes Secrets.
 
-The README may show example names, but Terraform code must generate or accept unique values.
+The secret flow is:
 
-## Flux Source Model
+~~~text
+Key Vault
+  → Secrets Store CSI Driver
+  → mounted file inside the pod
+  → application reads the mounted file
+  → /secret-status reports loaded=True without exposing the value
+~~~
 
-The Helm chart lives inside this same Git repository under `charts/devsecops-api/`. For that reason, the intended Flux model is:
+## Networking Model
 
-- `GitRepository` source pointing to this repository.
-- `HelmRelease` referencing the chart path inside that Git source.
+The v1 networking model is intentionally simple.
 
-Do not use `HelmRepository` unless the chart is later published to an external Helm/OCI registry.
+Included:
+
+- Azure VNet
+- AKS subnet
+- AKS public API server
+- ClusterIP Service for the app
+- port-forward for validation
+- basic Kubernetes NetworkPolicy
+
+Not included in v1:
+
+- private AKS cluster
+- private endpoints
+- Azure Firewall
+- NAT Gateway
+- Application Gateway
+- ingress-nginx as a default requirement
+- service mesh
+
+## Rollout Strategy
+
+The dev AKS environment is single-node and cost-conscious.
+
+For this reason, the AKS GitOps values use:
+
+~~~yaml
+deploymentStrategy:
+  type: Recreate
+~~~
+
+This avoids rollout failures caused by a RollingUpdate surge requiring both old and new pods to fit on the same small node.
+
+The default chart value remains RollingUpdate, but the AKS dev environment overrides it to Recreate.
+
+## Security Controls
+
+Implemented controls:
+
+- GitHub Actions OIDC authentication to Azure
+- no Azure client secret in GitHub
+- no application secret committed to Git
+- ACR image pulls through managed identity
+- Key Vault access through Workload Identity
+- Key Vault CSI secret mount
+- Kubernetes NetworkPolicy
+- Checkov IaC scanning
+- Trivy repository scanning
+- Helm lint and render validation
+- dedicated AKS GitOps Helm validation workflow
+
+## Observability Model
+
+v1 observability is intentionally lightweight.
+
+Used signals:
+
+- Flux status
+- HelmRelease status
+- Kubernetes pod status
+- Kubernetes events
+- application logs
+- diagnostic endpoints
+- Log Analytics / Azure Monitor basics
+
+Not included in v1:
+
+- Prometheus
+- Grafana
+- distributed tracing
+- full alerting stack
+
+## Main Runtime Validation
+
+A healthy deployment should show:
+
+~~~text
+Flux GitRepository Ready=True
+Flux Kustomization Ready=True
+HelmRelease Ready=True
+Pod Running 1/1
+Deployment strategy Recreate
+NetworkPolicy present
+Key Vault secret mounted
+/version reports the deployed git SHA
+/secret-status reports loaded=True
+~~~
+
+## Known Limitations
+
+This is a dev/portfolio platform, not production.
+
+Limitations:
+
+- single-node AKS cluster
+- public AKS API server
+- no high availability
+- no private endpoints
+- no Azure Firewall
+- no NAT Gateway
+- no service mesh
+- no multi-environment promotion flow
+- no Prometheus/Grafana in v1
+- validation primarily through port-forward
+- security scans may initially run in observation mode before becoming blocking
+
+## Future Improvements
+
+Potential future improvements:
+
+- staging and production environments
+- private AKS cluster
+- private endpoints for ACR and Key Vault
+- managed Prometheus and Grafana
+- policy enforcement with Kyverno or OPA Gatekeeper
+- Flux Image Automation instead of GitHub Actions tag commits
+- progressive delivery or canary releases
+- stricter NetworkPolicy model
+- branch protection and required checks
