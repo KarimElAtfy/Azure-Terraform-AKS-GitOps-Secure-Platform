@@ -1,22 +1,32 @@
 # Bootstrap Layer
 
-Creates the Azure Storage Account and Blob Container used for Terraform remote state.
+This Terraform layer creates the Azure Storage Account and Blob Container used for remote Terraform state.
+
+The bootstrap layer intentionally uses local state because the remote backend does not exist yet.
+
+## Responsibilities
+
+- Create the Terraform state resource group
+- Create the Terraform state Storage Account
+- Create the Blob container used by the `core` and `aks` layers
 
 ## Resources
 
-- Resource Group: `rg-tfstate-aks-gitops-dev`
-- Storage Account: generated globally unique name, for example `staksgitops<suffix>`
+- Resource Group: `rg-aks-gitops-tfstate-dev-gwc`
+- Storage Account: generated with a globally unique suffix
 - Blob Container: `tfstate`
 
 ## Usage
 
-```bash
+```powershell
 terraform init
+terraform fmt -check
+terraform validate
 terraform plan
 terraform apply
 ```
 
-This layer uses **local state** intentionally because the backend cannot store its own state yet.
+After apply, use the outputs to fill the `backend.hcl` files for the other Terraform layers.
 
 ## Outputs
 
@@ -24,8 +34,24 @@ This layer uses **local state** intentionally because the backend cannot store i
 - `container_name`
 - `resource_group_name`
 
-Use these values to create local `backend.hcl` files in the core and aks layers. Commit only `backend.hcl.example`; keep the real `backend.hcl` ignored.
-
 ## Files
 
-_To be created in Phase 3._
+```text
+infra/bootstrap/
+├── main.tf
+├── outputs.tf
+├── terraform.tfvars.example
+├── variables.tf
+└── versions.tf
+```
+
+## Notes
+
+Real Terraform state files and real backend configuration files must never be committed.
+
+Commit only example files such as:
+
+```text
+terraform.tfvars.example
+backend.hcl.example
+```

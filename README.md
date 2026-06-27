@@ -183,7 +183,6 @@ sequenceDiagram
 │   ├── incidents/
 │   ├── local-kubernetes-lab.md
 │   ├── observability.md
-│   ├── phase-0-review.md
 │   ├── security-model.md
 │   └── troubleshooting.md
 ├── infra/

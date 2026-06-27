@@ -1,7 +1,7 @@
 # Copy this file to backend.hcl and fill values from infra/bootstrap outputs.
 # Do not commit the real backend.hcl.
 
-resource_group_name  = "rg-tfstate-aks-gitops-dev"
+resource_group_name  = "rg-aks-gitops-tfstate-dev-gwc"
 storage_account_name = "<bootstrap-storage-account-name>"
 container_name       = "tfstate"
 key                  = "core.dev.tfstate"

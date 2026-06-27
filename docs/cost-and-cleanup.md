@@ -55,7 +55,7 @@ terraform destroy -auto-approve
 az group list -o table | grep aks-gitops
 
 # Check for orphaned resources tagged by the project
-az resource list --query "[?tags.project=='aks-gitops']" -o table
+az resource list --query "[?tags.project=='aks-gitops-secure-platform']" -o table
 ```
 
 Also check the Azure Portal manually. Look for:

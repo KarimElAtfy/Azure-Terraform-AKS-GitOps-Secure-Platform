@@ -51,7 +51,7 @@ clusters/
 Required local tools:
 
 - Azure CLI
-- Terraform >= 1.5
+- Terraform >= 1.6
 - Docker
 - Python 3.12+
 - kubectl
